@@ -1,0 +1,6 @@
+*.pyd
+*.pyo
+*.pyc
+
+sandbox
+
