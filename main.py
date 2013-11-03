@@ -1,7 +1,7 @@
 import skimage.morphology
 from freetype import *
 import numpy as np
-from skimage import morphology, data, io, img_as_bool, img_as_float, filter
+from skimage import morphology, data, io, img_as_bool, img_as_float, filter, exposure
 def POINT_SIZE(x):
     return x*64
 
@@ -66,11 +66,20 @@ def get_text(text, filename, size):
         pen.y += face.glyph.advance.y
     return L
 
-image = get_text("Test", 'sandbox/freetype-examples/Vera.ttf', 500)
-thresh = filter.threshold_otsu(image)
-print thresh
-binary = image > thresh
-print binary
+text = get_text("X", 'sandbox/freetype-examples/Vera.ttf', 500)
+thresh = filter.threshold_otsu(text)
+binary = text > thresh
 skel, distance = morphology.medial_axis(binary, return_distance=True)
-#skel = morphology.skeletonize(binary)
-io.imsave('test.png', img_as_float(skel))
+
+distance = distance.astype(np.uint16)
+skel = skel.astype(np.uint16)
+
+image = skel*distance
+#io.use_plugin('pil')
+io.imsave('skeleton.png', exposure.rescale_intensity(skel))
+io.imsave('distance.png', exposure.rescale_intensity(distance, out_range=(0,255)).astype(np.uint8))
+#io.imsave('distance.png', distance)
+io.imsave('image.png', exposure.rescale_intensity(image, out_range=(0,255)).astype(np.uint8))
+io.imsave('text.png', text)
+
+
