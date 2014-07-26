@@ -8,4 +8,5 @@ images/*.png
 images/*.jpg
 images/*.gif
 
+*.sublime-workspace
 *.sublime-project
