@@ -1,4 +1,4 @@
-from numpy import zeros, array, int8, logical_or, copyto, maximum
+from numpy import zeros, array, int8, logical_or, copyto, maximum, greater
 
 image = array(
     [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -26,6 +26,7 @@ cross = array([
     dtype=int8)
 
 def expand(image, N):
+    'Returns the provided image, with its border expanded by N pixels on each side.'
     rows,cols = image.shape
     new_image = zeros((rows+(2*N),cols+(2*N)), dtype=int8)
     new_image[N:N+rows,N:N+cols] = image
@@ -34,50 +35,38 @@ def expand(image, N):
 def invert(image):
     return abs(1-image)
 
-def minkowski(a, b, sign=0):
-    ssize = b.shape[0]/2
-    output_image = expand(a, ssize)
-    input_image = expand(a, ssize)
-    if(sign):
-        output_image = invert(output_image)
-        input_image = invert(input_image)
+def dilate(img, keep_dims=False):
+    print keep_dims
+    img = expand(img, 1)
+    rows, cols = img.shape
+    for i in range(1, rows-1):
+        for j in range(1, cols-1):
+            if(img[i,j] == 1):
+                img[i+1,j] = 2 if img[i+1,j] == 0 else img[i+1,j]
+                img[i-1,j] = 2 if img[i-1,j] == 0 else img[i-1,j]
+                img[i,j+1] = 2 if img[i,j+1] == 0 else img[i,j+1]
+                img[i,j-1] = 2 if img[i,j-1] == 0 else img[i,j-1]
 
-    rows, cols = output_image.shape
-    for i in range(ssize, rows-ssize):
-        for j in range(ssize, cols-ssize):
-            if(input_image[i,j]):
-                output_image[i-ssize:i+ssize+1, j-ssize:j+ssize+1] |=  b
-
-    if(sign):
-        return invert(output_image)
+    img = greater(img, 0).astype(int8)
+    if keep_dims:
+        return img[1:rows-1][1:cols-1]
     else:
-        return output_image
+        return img
+
+def erode(img, keep_dims=False):
+    return invert(dilate(invert(img), keep_dims=keep_dims))
 
 def sesum(a, n):
-    print a
     for i in range(n):
-        print "  ", i
-        a = minkowski(a,a)
-    print a
+        a = dilate(a, keep_dims=True)
     return a
 
-def dilate(image, structuring_element):
-    ssize = structuring_element.shape[0]/2
-    tmp = minkowski(image, structuring_element, sign=0)
-    rows, cols = tmp.shape
-    return tmp[ssize:rows-ssize, ssize:cols-ssize]
 
-def erode(image, structuring_element):
-    ssize = structuring_element.shape[0]/2
-    tmp = minkowski(image, structuring_element, sign=1)
-    rows, cols = tmp.shape
-    return tmp[ssize:rows-ssize, ssize:cols-ssize]
+def open(image):
+    return dilate(erode(image))
 
-def open(image, structuring_element):
-    return dilate(erode(image, structuring_element), structuring_element)
-
-def openth(image, structuring_element):
-    return image - open(image, structuring_element)
+def openth(image):
+    return image - open(image)
 
 def union(a,b):
     return maximum(a,b)
@@ -87,7 +76,7 @@ def mmskelm(f,B=cross):
     for i in range(max(f.shape)):
         print i
         print "Sesum"
-        nb = sesum(B, i)
+        nb = sesum(cross, i)
         print "erode"
         f1 = erode(f, nb)
         print "openth"
@@ -107,4 +96,4 @@ function y=mmskelm_equ(f, B)
 '''
 
 print image
-print mmskelm(image)
+print mmskelm(cross, 10)
