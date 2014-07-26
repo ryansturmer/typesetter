@@ -1,99 +1,39 @@
-from numpy import zeros, array, int8, logical_or, copyto, maximum, greater
+from numpy import array, maximum, int8, zeros_like
+from scipy.ndimage.morphology import generate_binary_structure, iterate_structure, binary_dilation, binary_erosion, binary_opening
 
 image = array(
     [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0],
     [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
     [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
     [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
     [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
     [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
-    [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    [0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0]],
     dtype=int8
     )
 
-cross = array([
-    [0,1,0],
-    [1,1,1],
-    [0,1,0],
-    ],
-    dtype=int8)
-
-def expand(image, N):
-    'Returns the provided image, with its border expanded by N pixels on each side.'
-    rows,cols = image.shape
-    new_image = zeros((rows+(2*N),cols+(2*N)), dtype=int8)
-    new_image[N:N+rows,N:N+cols] = image
-    return new_image
-
-def invert(image):
-    return abs(1-image)
-
-def dilate(img, keep_dims=False):
-    print keep_dims
-    img = expand(img, 1)
-    rows, cols = img.shape
-    for i in range(1, rows-1):
-        for j in range(1, cols-1):
-            if(img[i,j] == 1):
-                img[i+1,j] = 2 if img[i+1,j] == 0 else img[i+1,j]
-                img[i-1,j] = 2 if img[i-1,j] == 0 else img[i-1,j]
-                img[i,j+1] = 2 if img[i,j+1] == 0 else img[i,j+1]
-                img[i,j-1] = 2 if img[i,j-1] == 0 else img[i,j-1]
-
-    img = greater(img, 0).astype(int8)
-    if keep_dims:
-        return img[1:rows-1][1:cols-1]
-    else:
-        return img
-
-def erode(img, keep_dims=False):
-    return invert(dilate(invert(img), keep_dims=keep_dims))
-
-def sesum(a, n):
-    for i in range(n):
-        a = dilate(a, keep_dims=True)
-    return a
-
-
-def open(image):
-    return dilate(erode(image))
-
-def openth(image):
-    return image - open(image)
-
-def union(a,b):
-    return maximum(a,b)
-
+cross = generate_binary_structure(2, 1)
+print cross
 def mmskelm(f,B=cross):
-    y = f
-    for i in range(max(f.shape)):
-        print i
-        print "Sesum"
-        nb = sesum(cross, i)
-        print "erode"
-        f1 = erode(f, nb)
-        print "openth"
-        f2 = openth(f,B)
-        print "union"
-        y = union(y, f2)
+    y = zeros_like(f)
+    for i in range(max(f.shape)+1):
 
-'''
-function y=mmskelm_equ(f, B)
-  y = mmbinary(zeros(size(f)));
-  for i=0:length(f)
-    nb = mmsesum(B,i);
-    f1 = mmero(f,nb);
-    f2 = mmopenth(f1,B);
-    y = mmunion(y,f2);
-  end; 
-'''
+        # Dilate the cross structure with itself (i) times
+        nb = iterate_structure(cross, i)
+
+        # Erode source image using structuring element created in previous step
+        f1 = binary_erosion(f, nb)
+
+        f2 = f1 - binary_opening(f1,B)
+        y = maximum(y, f2)
+        print y
+    return y
 
 print image
-print mmskelm(cross, 10)
+print mmskelm(image)
